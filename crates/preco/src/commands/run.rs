@@ -1,7 +1,6 @@
 use crate::cfg::pre_commit_config::PrecommitConfig;
 use crate::checkout::LoadedCheckout;
 use crate::file_set::get_file_set;
-use crate::git::files::get_changed_files;
 use crate::run_hook::RunHookCtx;
 use crate::{checkout, run_hook};
 use anyhow::{bail, Result};
@@ -9,7 +8,7 @@ use checkout::get_checkout;
 use clap::Args;
 use run_hook::RunHookResult;
 use serde_yaml::from_reader;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::fs;
 use std::fs::canonicalize;
 use std::path::PathBuf;
@@ -61,8 +60,8 @@ pub(crate) fn run(args: &RunArgs) -> Result<ExitCode> {
                     RunHookResult::Failure => {
                         error!("hook {} failed", cfg_hook.id);
                     }
-                    RunHookResult::Skipped => {
-                        warn!("hook {} skipped", cfg_hook.id);
+                    RunHookResult::Skipped(reason) => {
+                        warn!("hook {} skipped: {}", cfg_hook.id, reason);
                     }
                 }
             } else {

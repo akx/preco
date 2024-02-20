@@ -1,0 +1,16 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "preco"
+dynamic = ["version"]
+description = "Just a placeholder for now"
+license = "MIT OR Apache-2.0"
+authors = [
+  { name = "Aarni Koskela", email = "akx@iki.fi" },
+]
+dependencies = []
+
+[tool.hatch.version]
+path = "src/preco/__init__.py"

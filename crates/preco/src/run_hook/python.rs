@@ -9,19 +9,31 @@ pub(crate) fn run_python_hook(rhc: &RunHookCtx) -> Result<RunHookResult> {
         cfg_hook,
         hook_def,
         loaded_checkout,
-        fileset: _,
+        fileset,
     } = *rhc;
+    let matching_files = helpers::get_matching_files(fileset, cfg_hook, hook_def)?;
+    if matching_files.is_empty() {
+        debug!("no matching files for hook {}", hook_def.id);
+        return Ok(RunHookResult::Skipped("no matching files".to_string()));
+    }
+
     let checkout_path = &loaded_checkout.path;
     let venv_path = checkout_path.join(".preco-venv");
     if !venv_path.exists() {
         setup_venv(rhc, &venv_path)?;
     }
-    if hook_def.pass_filenames {
-        warn!("not implemented: pass_filenames=true; WILL WORK AS IF IT WERE FALSE!");
-    }
     let venv_bin_path = venv_path.join("bin"); // TODO: windows
     let path_with_venv = prepend_to_path_envvar(&venv_bin_path.to_string_lossy())?;
-    let command = helpers::get_command(&cfg_hook, &hook_def)?;
+    let mut command = helpers::get_command(cfg_hook, hook_def)?;
+    // TODO: will probably need to slice `command` in a `xargs` way to avoid coming up
+    //       with a command that's too long
+    if hook_def.pass_filenames {
+        command = format!(
+            "{} {}",
+            command,
+            shell_words::join(matching_files.iter().map(|f| f.to_string_lossy()))
+        );
+    }
 
     let run_span = trace_span!("run command", command = command);
     let _enter = run_span.enter();
@@ -31,6 +43,7 @@ pub(crate) fn run_python_hook(rhc: &RunHookCtx) -> Result<RunHookResult> {
         .env("PATH", path_with_venv)
         .arg("-c") // TODO: windows
         .arg(command)
+        .current_dir(&fileset.root_path)
         .status()?;
     Ok(if status.success() {
         RunHookResult::Success
@@ -52,7 +65,7 @@ fn setup_venv(rhc: &RunHookCtx, venv_path: &PathBuf) -> Result<()> {
     // TODO: doesn't support python version specification right now
     std::process::Command::new("uv")
         .arg("venv")
-        .arg(&venv_path)
+        .arg(venv_path)
         .status()?;
     debug!(
         "installing dependencies in {} with `uv`",
@@ -71,7 +84,7 @@ fn setup_venv(rhc: &RunHookCtx, venv_path: &PathBuf) -> Result<()> {
         );
     }
     std::process::Command::new("uv")
-        .env("VIRTUAL_ENV", &venv_path)
+        .env("VIRTUAL_ENV", venv_path)
         .arg("pip")
         .arg("install")
         .arg("-e")

@@ -1,4 +1,3 @@
-use shell_words;
 use std::env;
 use std::env::JoinPathsError;
 use std::ffi::OsString;

@@ -18,7 +18,7 @@ pub struct RunHookCtx<'a> {
 pub enum RunHookResult {
     Success,
     Failure,
-    Skipped,
+    Skipped(String),
 }
 
 pub fn run_hook(rhc: &RunHookCtx) -> anyhow::Result<RunHookResult> {
@@ -28,7 +28,10 @@ pub fn run_hook(rhc: &RunHookCtx) -> anyhow::Result<RunHookResult> {
         },
         LanguageOrUnknown::Unknown(lang) => {
             warn!("Unsupported language: {:?}", lang);
-            Ok(RunHookResult::Skipped)
+            Ok(RunHookResult::Skipped(format!(
+                "Unsupported language: {:?}",
+                lang
+            )))
         }
     }
 }

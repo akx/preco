@@ -13,12 +13,23 @@ pub(crate) struct FileSet {
     pub(crate) files_by_type: HashMap<String, Vec<Rc<PathBuf>>>,
 }
 
+impl FileSet {
+    pub(crate) fn has_type(&self, file: &Rc<PathBuf>, typename: &str) -> bool {
+        // TODO: this is a probable bottleneck, should probably prebuild
+        //       a mapping from file -> types too
+        self.files_by_type
+            .get(typename)
+            .map(|files| files.contains(file))
+            .unwrap_or(false)
+    }
+}
+
 // TODO: tags such as 'directory', 'symlink', 'socket', 'file', 'executable', 'non_executable', 'text', 'binary'
 
 #[instrument]
 pub(crate) fn get_file_set(root_path: &PathBuf, all_files: bool) -> anyhow::Result<FileSet> {
     let files_raw = if all_files {
-        get_git_tracked_files(&root_path)?
+        get_git_tracked_files(root_path)?
     } else {
         bail!("not implemented: not --all-files");
     };
@@ -30,7 +41,7 @@ pub(crate) fn get_file_set(root_path: &PathBuf, all_files: bool) -> anyhow::Resu
                 for typename in &types[0..(*n)] {
                     files_by_type
                         .entry(typename.to_string())
-                        .or_insert_with(Vec::new)
+                        .or_default()
                         .push(Rc::clone(file));
                 }
             }
@@ -40,7 +51,7 @@ pub(crate) fn get_file_set(root_path: &PathBuf, all_files: bool) -> anyhow::Resu
                 for typename in &types[0..(*n)] {
                     files_by_type
                         .entry(typename.to_string())
-                        .or_insert_with(Vec::new)
+                        .or_default()
                         .push(Rc::clone(file));
                 }
             }
