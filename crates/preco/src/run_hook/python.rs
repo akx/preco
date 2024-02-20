@@ -71,24 +71,18 @@ fn setup_venv(rhc: &RunHookCtx, venv_path: &PathBuf) -> Result<()> {
         "installing dependencies in {} with `uv`",
         venv_path.to_string_lossy()
     );
-    if !hook_def.additional_dependencies.is_empty() {
-        warn!(
-            "not implemented: additional_dependencies in hook definition: {:?}",
-            hook_def.additional_dependencies
-        );
-    }
-    if let Some(additional_dependencies) = &cfg_hook.additional_dependencies {
-        warn!(
-            "not implemented: additional_dependencies in user configuration: {:?}",
-            additional_dependencies
-        );
+    let mut additional_deps = Vec::new();
+    additional_deps.extend(hook_def.additional_dependencies.iter());
+    if let Some(cfg_addl_deps) = &cfg_hook.additional_dependencies {
+        additional_deps.extend(cfg_addl_deps.iter());
     }
     std::process::Command::new("uv")
         .env("VIRTUAL_ENV", venv_path)
         .arg("pip")
         .arg("install")
-        .arg("-e")
+        .arg("-e") // TODO: see https://github.com/astral-sh/uv/issues/313
         .arg(checkout_path)
+        .args(additional_deps)
         .status()?;
     Ok(())
 }

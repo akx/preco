@@ -1,7 +1,9 @@
 use crate::cfg::pre_commit_config::{Hook, Repo, RepoURL};
 use crate::cfg::pre_commit_hooks::PrecommitHooks;
 use anyhow::bail;
+use rustc_hash::FxHasher;
 use std::fs;
+use std::hash::Hasher;
 use std::path::PathBuf;
 use tracing::debug;
 
@@ -69,19 +71,30 @@ impl Checkout {
 }
 
 pub fn get_checkout(repo: &Repo, hook: &Hook) -> anyhow::Result<Checkout> {
-    if hook.additional_dependencies.is_some() {
-        bail!("not implemented: additional_dependencies");
-    }
-    let path_str = format!(
+    let mut path_str = format!(
         "preco-checkouts/{}/{}",
         normalize_repo_url_to_path(&repo.url.to_string())?,
         normalize_repo_url_to_path(&repo.rev)?
     );
+    if let Some(addl_deps) = &hook.additional_dependencies {
+        if !addl_deps.is_empty() {
+            path_str = format!("{}+{}", path_str, hash_additional_dependencies(&addl_deps));
+        }
+    }
     Ok(Checkout {
         repo_url: repo.url.clone(),
         repo_rev: repo.rev.clone(),
         path: PathBuf::from(&path_str),
     })
+}
+
+fn hash_additional_dependencies(deps: &Vec<String>) -> String {
+    // fxhash isn't cryptographically secure, but I don't think we need that here
+    let mut hasher = FxHasher::default();
+    for dep in deps {
+        hasher.write(dep.as_bytes());
+    }
+    format!("{:x}", hasher.finish())
 }
 
 fn normalize_repo_url_to_path(url: &str) -> anyhow::Result<String> {

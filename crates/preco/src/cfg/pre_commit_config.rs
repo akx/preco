@@ -44,7 +44,7 @@ impl Display for RepoURL {
 #[serde(deny_unknown_fields)]
 pub struct Hook {
     pub id: String,
-    pub additional_dependencies: Option<Vec<String>>, // TODO: unimplemented
-    pub args: Option<Vec<String>>,                    // TODO: unimplemented
-    pub exclude: Option<String>,                      // TODO: unimplemented
+    pub additional_dependencies: Option<Vec<String>>,
+    pub args: Option<Vec<String>>, // TODO: unimplemented
+    pub exclude: Option<String>,   // TODO: unimplemented
 }

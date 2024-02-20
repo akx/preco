@@ -16,6 +16,8 @@ clap = { workspace = true, features = ["derive"] }
 clap_complete_command = { workspace = true }
 futures = { workspace = true }
 git2 = { workspace = true }
+identify = { path = "../identify" }
+rustc-hash = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_yaml = { workspace = true }
 shell-words = {workspace = true}
@@ -23,4 +25,3 @@ tokio = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 tracing-tree = { workspace = true }
-identify = { path = "../identify" }
