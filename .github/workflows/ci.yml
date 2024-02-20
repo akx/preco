@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+env:
+  CARGO_INCREMENTAL: 0
+  CARGO_NET_RETRY: 10
+  CARGO_TERM_COLOR: always
+  RUSTUP_MAX_RETRIES: 10
+  PYTHON_VERSION: "3.12"
+
+jobs:
+  cargo-fmt:
+    name: "cargo fmt"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: "Install Rust toolchain"
+        run: rustup component add rustfmt
+      - name: "rustfmt"
+        run: cargo fmt --all --check
+
+  cargo-clippy:
+    name: "cargo clippy"
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: "Install Rust toolchain"
+        run: rustup component add clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - name: "Clippy"
+        run: cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
+
+  cargo-test:
+    strategy:
+      matrix:
+        include:
+          - { os: "ubuntu", runner: "ubuntu-latest" }
+          # - { os: "windows", runner: "windows-latest" }
+          # - { os: "macos", runner: "macos-14" }
+    runs-on:
+      labels: ${{ matrix.runner }}
+    name: "cargo test | ${{ matrix.os }}"
+    steps:
+      - uses: actions/checkout@v4
+      - name: "Install Rust toolchain"
+        run: rustup show
+      - if: ${{ matrix.os != 'windows' }}
+        uses: rui314/setup-mold@v1
+      - name: "Install cargo nextest"
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest
+      - uses: Swatinem/rust-cache@v2
+        with:
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - name: "Cargo test"
+        run: |
+          cargo nextest run --workspace --status-level skip --failure-output immediate-final --no-fail-fast -j 12 --final-status-level slow

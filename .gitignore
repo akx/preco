@@ -1,0 +1,12 @@
+**/*.rs.bk
+*.dll
+*.pdb
+*.pyd
+*.so
+__pycache__
+debug/
+flamegraph.svg
+perf.data*
+profile.json
+target/
+/preco-checkouts

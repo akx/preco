@@ -1,0 +1,25 @@
+[package]
+name = "preco"
+version = "0.0.1"
+authors = { workspace = true }
+documentation = { workspace = true }
+edition = { workspace = true }
+homepage = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+rust-version = { workspace = true }
+default-run = "preco"
+
+[dependencies]
+anyhow = { workspace = true }
+clap = { workspace = true, features = ["derive"] }
+clap_complete_command = { workspace = true }
+futures = { workspace = true }
+git2 = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_yaml = { workspace = true }
+shell-words = {workspace = true}
+tokio = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+tracing-tree = { workspace = true }
