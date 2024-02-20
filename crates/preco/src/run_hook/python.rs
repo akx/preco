@@ -9,6 +9,7 @@ pub(crate) fn run_python_hook(rhc: &RunHookCtx) -> Result<RunHookResult> {
         cfg_hook,
         hook_def,
         loaded_checkout,
+        fileset: _,
     } = *rhc;
     let checkout_path = &loaded_checkout.path;
     let venv_path = checkout_path.join(".preco-venv");
@@ -44,6 +45,7 @@ fn setup_venv(rhc: &RunHookCtx, venv_path: &PathBuf) -> Result<()> {
         loaded_checkout,
         hook_def,
         cfg_hook,
+        ..
     } = *rhc;
     let checkout_path = &loaded_checkout.path;
     debug!("creating venv in {} with `uv`", venv_path.to_string_lossy());

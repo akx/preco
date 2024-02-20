@@ -1,17 +1,20 @@
 use crate::cfg::pre_commit_config::PrecommitConfig;
 use crate::checkout::LoadedCheckout;
+use crate::file_set::get_file_set;
+use crate::git::files::get_changed_files;
 use crate::run_hook::RunHookCtx;
 use crate::{checkout, run_hook};
-use anyhow::Result;
+use anyhow::{bail, Result};
 use checkout::get_checkout;
 use clap::Args;
 use run_hook::RunHookResult;
 use serde_yaml::from_reader;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs;
+use std::fs::canonicalize;
 use std::path::PathBuf;
 use std::process::ExitCode;
-use tracing::{debug, error, instrument, warn};
+use tracing::{debug, error, info, instrument, warn};
 
 #[derive(Args, Debug, Clone)]
 pub struct RunArgs {
@@ -21,10 +24,17 @@ pub struct RunArgs {
 
 #[instrument]
 pub(crate) fn run(args: &RunArgs) -> Result<ExitCode> {
-    if !args.all_files {
-        anyhow::bail!("not implemented: not --all-files");
-    }
-    let rdr = fs::File::open(".pre-commit-config.yaml")?;
+    let root_path = canonicalize(PathBuf::from("."))?;
+    let rdr = fs::File::open(root_path.join(".pre-commit-config.yaml")).or_else(|_| {
+        bail!(
+            "no .pre-commit-config.yaml found in {}",
+            root_path.display()
+        )
+    })?;
+
+    let fileset = get_file_set(&root_path, args.all_files)?;
+    info!("fileset: {} files", fileset.files.len());
+
     let cfg: PrecommitConfig = from_reader(rdr)?;
     let mut checkouts: HashMap<PathBuf, LoadedCheckout> = HashMap::new();
     for repo in &cfg.repos {
@@ -38,26 +48,25 @@ pub(crate) fn run(args: &RunArgs) -> Result<ExitCode> {
                 co.ensure_checkout_cloned().unwrap();
                 co.load().unwrap()
             });
-            match loaded_checkout.hooks.iter().find(|h| h.id == cfg_hook.id) {
-                Some(hook_def) => {
-                    let rhc = RunHookCtx {
-                        loaded_checkout,
-                        hook_def,
-                        cfg_hook,
-                    };
-                    match run_hook::run_hook(&rhc)? {
-                        RunHookResult::Success => {}
-                        RunHookResult::Failure => {
-                            error!("hook {} failed", cfg_hook.id);
-                        }
-                        RunHookResult::Skipped => {
-                            warn!("hook {} skipped", cfg_hook.id);
-                        }
+            let maybe_hook_def = loaded_checkout.hooks.iter().find(|h| h.id == cfg_hook.id);
+            if let Some(hook_def) = maybe_hook_def {
+                let rhc = RunHookCtx {
+                    loaded_checkout,
+                    hook_def,
+                    cfg_hook,
+                    fileset: &fileset,
+                };
+                match run_hook::run_hook(&rhc)? {
+                    RunHookResult::Success => {}
+                    RunHookResult::Failure => {
+                        error!("hook {} failed", cfg_hook.id);
+                    }
+                    RunHookResult::Skipped => {
+                        warn!("hook {} skipped", cfg_hook.id);
                     }
                 }
-                None => {
-                    error!("hook {} not found", cfg_hook.id);
-                }
+            } else {
+                error!("hook {} not found", cfg_hook.id);
             }
         }
     }
