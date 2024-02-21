@@ -1,8 +1,10 @@
 use crate::cfg::pre_commit_config::PrecommitConfig;
 use crate::checkout::LoadedCheckout;
 use crate::file_set::get_file_set;
+use crate::run_hook::configured_hook::{configure_hook, ConfiguredHook};
 use crate::run_hook::RunHookCtx;
 use crate::{checkout, run_hook};
+
 use anyhow::{bail, Result};
 use checkout::get_checkout;
 use clap::Args;
@@ -50,36 +52,49 @@ pub(crate) fn run(args: &RunArgs) -> Result<ExitCode> {
         let ru = repo.url.to_string();
         let span = tracing::debug_span!("repo", url = ru);
         let _ = span.enter();
-        for cfg_hook in &repo.hooks {
-            let co = get_checkout(repo, cfg_hook)?;
+        for hook_cfg in &repo.hooks {
+            let co = get_checkout(repo, hook_cfg)?;
             let loaded_checkout = checkouts.entry(co.path.clone()).or_insert_with(|| {
                 debug!("loading checkout {}", co.path.display());
                 co.ensure_checkout_cloned().unwrap();
                 co.load().unwrap()
             });
-            let maybe_hook_def = loaded_checkout.hooks.iter().find(|h| h.id == cfg_hook.id);
-            if let Some(hook_def) = maybe_hook_def {
-                let rhc = RunHookCtx {
-                    run_config: &run_config,
-                    loaded_checkout,
-                    hook_def,
-                    cfg_hook,
-                    fileset: &fileset,
-                };
-                match run_hook::run_hook(&rhc)? {
-                    RunHookResult::Success => {}
-                    RunHookResult::Failure => {
-                        error!("hook {} failed", cfg_hook.id);
-                        if run_config.fail_fast {
-                            bail!("fail-fast enabled, stopping");
-                        }
-                    }
-                    RunHookResult::Skipped(reason) => {
-                        warn!("hook {} skipped: {}", cfg_hook.id, reason);
+            let ConfiguredHook { hook } = configure_hook(loaded_checkout, hook_cfg)?;
+            let info = &hook_cfg.info;
+
+            if info.verbose {
+                warn!("verbose hooks not implemented");
+            }
+            if info.log_file.is_some() {
+                warn!(
+                    "log_file not implemented, not honoring {}",
+                    info.log_file.as_ref().unwrap()
+                );
+            }
+            if info.language_version.is_some() {
+                warn!(
+                    "language_version not implemented, not honoring {}",
+                    info.language_version.as_ref().unwrap()
+                );
+            }
+            let rhc = RunHookCtx {
+                run_config: &run_config,
+                loaded_checkout,
+                hook: &hook,
+                info,
+                fileset: &fileset,
+            };
+            match run_hook::run_hook(&rhc)? {
+                RunHookResult::Success => {}
+                RunHookResult::Failure => {
+                    error!("hook {} failed", hook_cfg.id);
+                    if run_config.fail_fast {
+                        bail!("fail-fast enabled, stopping");
                     }
                 }
-            } else {
-                error!("hook {} not found", cfg_hook.id);
+                RunHookResult::Skipped(reason) => {
+                    warn!("hook {} skipped: {}", hook_cfg.id, reason);
+                }
             }
         }
     }

@@ -1,4 +1,4 @@
-use crate::cfg::pre_commit_config::{Hook, Repo, RepoURL};
+use crate::cfg::pre_commit_config::{HookConfiguration, Repo, RepoURL};
 use crate::cfg::pre_commit_hooks::PrecommitHooks;
 use anyhow::bail;
 use rustc_hash::FxHasher;
@@ -70,15 +70,15 @@ impl Checkout {
     }
 }
 
-pub fn get_checkout(repo: &Repo, hook: &Hook) -> anyhow::Result<Checkout> {
+pub fn get_checkout(repo: &Repo, hook: &HookConfiguration) -> anyhow::Result<Checkout> {
     let mut path_str = format!(
         "preco-checkouts/{}/{}",
         normalize_repo_url_to_path(&repo.url.to_string())?,
         normalize_repo_url_to_path(&repo.rev)?
     );
-    if let Some(addl_deps) = &hook.additional_dependencies {
+    if let Some(addl_deps) = &hook.overrides.additional_dependencies {
         if !addl_deps.is_empty() {
-            path_str = format!("{}+{}", path_str, hash_additional_dependencies(&addl_deps));
+            path_str = format!("{}+{}", path_str, hash_additional_dependencies(addl_deps));
         }
     }
     Ok(Checkout {

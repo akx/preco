@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-pub type PrecommitHooks = Vec<PrecommitHook>;
+pub type PrecommitHooks = Vec<HookDefinition>;
 
 fn default_as_true() -> bool {
     true
@@ -8,7 +8,7 @@ fn default_as_true() -> bool {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct PrecommitHook {
+pub struct HookDefinition {
     /// Used in configuration
     pub id: String,
     /// Shown during hook execution
@@ -32,8 +32,11 @@ pub struct PrecommitHook {
     pub types: Option<Vec<String>>,
     /// File type names to run the hook on (OR condition).
     pub types_or: Option<Vec<String>>,
-    /// File type names to run the hook on.
+    /// File regex to run the hook on.
     pub files: Option<String>,
+    /// File regex to exclude from running the hook.
+    /// (Strictly speaking not part of the pre-commit spec.)
+    pub exclude: Option<String>,
     /// Whether filenames should be passed to the hook.
     #[serde(default = "default_as_true")]
     pub pass_filenames: bool,

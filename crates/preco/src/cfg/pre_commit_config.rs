@@ -1,3 +1,4 @@
+use crate::cfg::pre_commit_hooks::StageOrUnknown;
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
 
@@ -18,7 +19,7 @@ pub struct Repo {
     #[serde(rename = "repo")]
     pub url: RepoURL,
     pub rev: String,
-    pub hooks: Vec<Hook>,
+    pub hooks: Vec<HookConfiguration>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Hash, Eq, PartialEq)]
@@ -43,9 +44,39 @@ impl Display for RepoURL {
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(deny_unknown_fields)]
-pub struct Hook {
+pub struct HookConfiguration {
     pub id: String,
+    #[serde(flatten)]
+    pub info: HookConfigurationInfo,
+    #[serde(flatten)]
+    pub overrides: HookDefinitionOverrides,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(deny_unknown_fields)]
+pub struct HookConfigurationInfo {
+    /// Additional id for command line
+    pub alias: Option<String>, // TODO: unimplemented.
+    /// Override language version
+    pub language_version: Option<String>,
+    #[serde(default)]
+    pub verbose: bool,
+    pub log_file: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(deny_unknown_fields)]
+/// See HookDefinition for documentation.
+pub struct HookDefinitionOverrides {
+    pub name: Option<String>,
+    pub description: Option<String>,
+    pub files: Option<String>,
+    pub exclude: Option<String>,
+    pub types: Option<Vec<String>>,
+    pub types_or: Option<Vec<String>>,
+    pub exclude_types: Option<Vec<String>>,
     pub additional_dependencies: Option<Vec<String>>,
-    pub args: Option<Vec<String>>, // TODO: unimplemented
-    pub exclude: Option<String>,   // TODO: unimplemented
+    pub args: Option<Vec<String>>,
+    pub stages: Option<Vec<StageOrUnknown>>,
+    pub always_run: Option<bool>,
 }

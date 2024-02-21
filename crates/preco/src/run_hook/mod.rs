@@ -1,10 +1,12 @@
-use crate::cfg::pre_commit_config::Hook;
-use crate::cfg::pre_commit_hooks::{Language, LanguageOrUnknown, PrecommitHook};
+use crate::cfg::pre_commit_config::HookConfigurationInfo;
+use tracing::warn;
+
+use crate::cfg::pre_commit_hooks::{HookDefinition, Language, LanguageOrUnknown};
 use crate::checkout::LoadedCheckout;
 use crate::commands::run::RunConfig;
 use crate::file_set::FileSet;
-use tracing::warn;
 
+pub(crate) mod configured_hook;
 mod helpers;
 mod python;
 
@@ -12,8 +14,8 @@ mod python;
 pub struct RunHookCtx<'a> {
     pub run_config: &'a RunConfig,
     pub loaded_checkout: &'a LoadedCheckout,
-    pub hook_def: &'a PrecommitHook,
-    pub cfg_hook: &'a Hook,
+    pub hook: &'a HookDefinition,
+    pub info: &'a HookConfigurationInfo,
     pub fileset: &'a FileSet,
 }
 
@@ -24,7 +26,7 @@ pub enum RunHookResult {
 }
 
 pub fn run_hook(rhc: &RunHookCtx) -> anyhow::Result<RunHookResult> {
-    match &rhc.hook_def.language {
+    match &rhc.hook.language {
         LanguageOrUnknown::Language(lang) => match lang {
             Language::Python => python::run_python_hook(rhc),
         },

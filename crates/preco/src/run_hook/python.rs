@@ -6,15 +6,15 @@ use tracing::{debug, instrument, trace_span, warn};
 
 pub(crate) fn run_python_hook(rhc: &RunHookCtx) -> Result<RunHookResult> {
     let RunHookCtx {
-        cfg_hook,
+        hook,
         fileset,
-        hook_def,
         loaded_checkout,
         run_config,
+        info: _,
     } = *rhc;
-    let matching_files = helpers::get_matching_files(run_config, fileset, cfg_hook, hook_def)?;
+    let matching_files = helpers::get_matching_files(run_config, fileset, hook)?;
     if matching_files.is_empty() {
-        debug!("no matching files for hook {}", hook_def.id);
+        debug!("no matching files for hook {}", hook.id);
         return Ok(RunHookResult::Skipped("no matching files".to_string()));
     }
 
@@ -25,10 +25,10 @@ pub(crate) fn run_python_hook(rhc: &RunHookCtx) -> Result<RunHookResult> {
     }
     let venv_bin_path = venv_path.join("bin"); // TODO: windows
     let path_with_venv = prepend_to_path_envvar(&venv_bin_path.to_string_lossy())?;
-    let mut command = helpers::get_command(cfg_hook, hook_def)?;
+    let mut command = helpers::get_command(hook)?;
     // TODO: will probably need to slice `command` in a `xargs` way to avoid coming up
     //       with a command that's too long
-    if hook_def.pass_filenames {
+    if hook.pass_filenames {
         command = format!(
             "{} {}",
             command,
@@ -57,8 +57,7 @@ pub(crate) fn run_python_hook(rhc: &RunHookCtx) -> Result<RunHookResult> {
 fn setup_venv(rhc: &RunHookCtx, venv_path: &PathBuf) -> Result<()> {
     let RunHookCtx {
         loaded_checkout,
-        hook_def,
-        cfg_hook,
+        hook,
         ..
     } = *rhc;
     let checkout_path = &loaded_checkout.path;
@@ -72,18 +71,13 @@ fn setup_venv(rhc: &RunHookCtx, venv_path: &PathBuf) -> Result<()> {
         "installing dependencies in {} with `uv`",
         venv_path.to_string_lossy()
     );
-    let mut additional_deps = Vec::new();
-    additional_deps.extend(hook_def.additional_dependencies.iter());
-    if let Some(cfg_addl_deps) = &cfg_hook.additional_dependencies {
-        additional_deps.extend(cfg_addl_deps.iter());
-    }
     std::process::Command::new("uv")
         .env("VIRTUAL_ENV", venv_path)
         .arg("pip")
         .arg("install")
         .arg("-e") // TODO: see https://github.com/astral-sh/uv/issues/313
         .arg(checkout_path)
-        .args(additional_deps)
+        .args(hook.additional_dependencies.iter())
         .status()?;
     Ok(())
 }
