@@ -96,6 +96,7 @@ pub(crate) fn run(args: &RunArgs) -> Result<ExitCode> {
                 files: &matching_files,
             };
 
+            // TODO: track changes to files before/after runs
             match run_hook::run_hook(&rhc)? {
                 RunHookResult::Success => {}
                 RunHookResult::Failure => {

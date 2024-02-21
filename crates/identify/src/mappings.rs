@@ -22,7 +22,6 @@
 ///   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 ///   THE SOFTWARE.
 ///
-
 use phf::phf_map;
 
 static EXTENSION_MAP: phf::Map<&'static str, &'static (usize, [&str; 4])> = phf_map! {
