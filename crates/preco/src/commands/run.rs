@@ -28,7 +28,7 @@ pub struct RunConfig {
     pub files: Option<String>,
     pub exclude: Option<String>,
 }
-#[instrument]
+#[instrument(skip(args))]
 pub(crate) fn run(args: &RunArgs) -> Result<ExitCode> {
     let root_path = canonicalize(PathBuf::from("."))?;
     let rdr = fs::File::open(root_path.join(".pre-commit-config.yaml")).or_else(|_| {
@@ -39,7 +39,7 @@ pub(crate) fn run(args: &RunArgs) -> Result<ExitCode> {
     })?;
 
     let fileset = get_file_set(&root_path, args.all_files)?;
-    info!("fileset: {} files", fileset.files.len());
+    info!("Running on {} files", fileset.files.len());
 
     let precommit_config: PrecommitConfig = from_reader(rdr)?;
     let run_config: RunConfig = RunConfig {

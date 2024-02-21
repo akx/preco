@@ -1,5 +1,5 @@
 use crate::cfg::pre_commit_config::HookConfigurationInfo;
-use tracing::warn;
+use tracing::{instrument, warn};
 
 use crate::cfg::pre_commit_hooks::{HookDefinition, Language, LanguageOrUnknown};
 use crate::checkout::LoadedCheckout;
@@ -25,17 +25,15 @@ pub enum RunHookResult {
     Skipped(String),
 }
 
+#[instrument(skip(rhc), fields(hook_id=rhc.hook.id))]
 pub fn run_hook(rhc: &RunHookCtx) -> anyhow::Result<RunHookResult> {
     match &rhc.hook.language {
         LanguageOrUnknown::Language(lang) => match lang {
             Language::Python => python::run_python_hook(rhc),
         },
-        LanguageOrUnknown::Unknown(lang) => {
-            warn!("Unsupported language: {:?}", lang);
-            Ok(RunHookResult::Skipped(format!(
-                "Unsupported language: {:?}",
-                lang
-            )))
-        }
+        LanguageOrUnknown::Unknown(lang) => Ok(RunHookResult::Skipped(format!(
+            "Unsupported language: {:?}",
+            lang
+        ))),
     }
 }

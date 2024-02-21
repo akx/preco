@@ -22,6 +22,9 @@ mod run_hook;
 struct Cli {
     #[command(subcommand)]
     command: Commands,
+
+    #[arg(global = true, long, env = "PRECO_TRACING")]
+    tracing: bool,
 }
 
 #[derive(Subcommand)]
@@ -38,7 +41,7 @@ enum Commands {
 async fn run_main() -> Result<ExitCode> {
     let cli = Cli::try_parse()?;
 
-    logging::setup_logging();
+    logging::setup_logging(cli.tracing);
 
     match cli.command {
         Commands::Run(args) => run(&args),
