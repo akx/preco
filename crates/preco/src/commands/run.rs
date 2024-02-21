@@ -5,6 +5,7 @@ use crate::run_hook::configured_hook::{configure_hook, ConfiguredHook};
 use crate::run_hook::RunHookCtx;
 use crate::{checkout, run_hook};
 
+use crate::file_matching::get_matching_files;
 use anyhow::{bail, Result};
 use checkout::get_checkout;
 use clap::Args;
@@ -77,13 +78,24 @@ pub(crate) fn run(args: &RunArgs) -> Result<ExitCode> {
                     info.language_version.as_ref().unwrap()
                 );
             }
+            if hook.always_run {
+                warn!("always_run not implemented");
+            }
+            let matching_files = get_matching_files(&run_config, &fileset, &hook)?;
+
+            if matching_files.is_empty() {
+                warn!("hook {} skipped: no matching files", hook_cfg.id);
+                continue;
+            }
+
             let rhc = RunHookCtx {
                 run_config: &run_config,
                 loaded_checkout,
                 hook: &hook,
                 info,
-                fileset: &fileset,
+                files: &matching_files,
             };
+
             match run_hook::run_hook(&rhc)? {
                 RunHookResult::Success => {}
                 RunHookResult::Failure => {

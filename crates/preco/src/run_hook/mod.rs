@@ -4,7 +4,8 @@ use tracing::{instrument, warn};
 use crate::cfg::pre_commit_hooks::{HookDefinition, Language, LanguageOrUnknown};
 use crate::checkout::LoadedCheckout;
 use crate::commands::run::RunConfig;
-use crate::file_set::FileSet;
+use crate::file_matching::MatchingFiles;
+
 
 pub(crate) mod configured_hook;
 mod helpers;
@@ -16,7 +17,7 @@ pub struct RunHookCtx<'a> {
     pub loaded_checkout: &'a LoadedCheckout,
     pub hook: &'a HookDefinition,
     pub info: &'a HookConfigurationInfo,
-    pub fileset: &'a FileSet,
+    pub files: &'a MatchingFiles,
 }
 
 pub enum RunHookResult {

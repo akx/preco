@@ -1,24 +1,20 @@
+use crate::file_matching::MatchingFiles;
 use crate::helpers::hash_additional_dependencies;
 use crate::helpers::prepend_to_path_envvar;
 use crate::run_hook::{helpers, RunHookCtx, RunHookResult};
 use anyhow::Result;
 use std::path::PathBuf;
-use tracing::{debug, instrument, trace_span, warn};
+use tracing::{debug, instrument, trace_span};
 
 pub(crate) fn run_python_hook(rhc: &RunHookCtx) -> Result<RunHookResult> {
     let RunHookCtx {
-        fileset,
+        files: mf,
         hook,
         info: _,
         loaded_checkout: _,
-        run_config,
+        run_config: _,
     } = *rhc;
-    let matching_files = helpers::get_matching_files(run_config, fileset, hook)?;
-    if matching_files.is_empty() {
-        debug!("no matching files for hook {}", hook.id);
-        return Ok(RunHookResult::Skipped("no matching files".to_string()));
-    }
-
+    let MatchingFiles { files, root_path } = mf;
     let venv_path = ensure_venv(rhc)?;
     let venv_bin_path = venv_path.join("bin"); // TODO: windows
     let path_with_venv = prepend_to_path_envvar(&venv_bin_path.to_string_lossy())?;
@@ -29,7 +25,7 @@ pub(crate) fn run_python_hook(rhc: &RunHookCtx) -> Result<RunHookResult> {
         command = format!(
             "{} {}",
             command,
-            shell_words::join(matching_files.iter().map(|f| f.to_string_lossy()))
+            shell_words::join(files.iter().map(|f| f.to_string_lossy()))
         );
     }
 
@@ -41,7 +37,7 @@ pub(crate) fn run_python_hook(rhc: &RunHookCtx) -> Result<RunHookResult> {
         .env("PATH", path_with_venv)
         .arg("-c") // TODO: windows
         .arg(command)
-        .current_dir(&fileset.root_path)
+        .current_dir(root_path)
         .status()?;
     Ok(if status.success() {
         RunHookResult::Success
