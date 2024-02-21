@@ -1,9 +1,8 @@
 use crate::cfg::pre_commit_config::{HookConfiguration, Repo, RepoURL};
 use crate::cfg::pre_commit_hooks::PrecommitHooks;
+use crate::helpers;
 use anyhow::bail;
-use rustc_hash::FxHasher;
 use std::fs;
-use std::hash::Hasher;
 use std::path::PathBuf;
 use tracing::debug;
 
@@ -78,7 +77,11 @@ pub fn get_checkout(repo: &Repo, hook: &HookConfiguration) -> anyhow::Result<Che
     );
     if let Some(addl_deps) = &hook.overrides.additional_dependencies {
         if !addl_deps.is_empty() {
-            path_str = format!("{}+{}", path_str, hash_additional_dependencies(addl_deps));
+            path_str = format!(
+                "{}+{}",
+                path_str,
+                helpers::hash_additional_dependencies(addl_deps)
+            );
         }
     }
     Ok(Checkout {
@@ -86,15 +89,6 @@ pub fn get_checkout(repo: &Repo, hook: &HookConfiguration) -> anyhow::Result<Che
         repo_rev: repo.rev.clone(),
         path: PathBuf::from(&path_str),
     })
-}
-
-fn hash_additional_dependencies(deps: &Vec<String>) -> String {
-    // fxhash isn't cryptographically secure, but I don't think we need that here
-    let mut hasher = FxHasher::default();
-    for dep in deps {
-        hasher.write(dep.as_bytes());
-    }
-    format!("{:x}", hasher.finish())
 }
 
 fn normalize_repo_url_to_path(url: &str) -> anyhow::Result<String> {
