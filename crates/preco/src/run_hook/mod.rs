@@ -6,9 +6,9 @@ use crate::checkout::LoadedCheckout;
 use crate::commands::run::RunConfig;
 use crate::file_matching::MatchingFiles;
 
-
 pub(crate) mod configured_hook;
 mod helpers;
+mod node;
 mod python;
 
 #[derive(Debug)]
@@ -30,6 +30,7 @@ pub enum RunHookResult {
 pub fn run_hook(rhc: &RunHookCtx) -> anyhow::Result<RunHookResult> {
     match &rhc.hook.language {
         LanguageOrUnknown::Language(lang) => match lang {
+            Language::Node => node::run_node_hook(rhc),
             Language::Python => python::run_python_hook(rhc),
         },
         LanguageOrUnknown::Unknown(lang) => Ok(RunHookResult::Skipped(format!(
