@@ -1,5 +1,6 @@
 use crate::cfg::pre_commit_config::Hook;
 use crate::cfg::pre_commit_hooks::PrecommitHook;
+use crate::commands::run::RunConfig;
 use crate::file_set::FileSet;
 use crate::helpers::append_args;
 use std::collections::HashSet;
@@ -24,12 +25,25 @@ pub fn get_command(cfg_hook: &Hook, hook_def: &PrecommitHook) -> anyhow::Result<
     Ok(command)
 }
 
-#[instrument(skip(fileset, cfg_hook, hook_def))]
+#[instrument(skip(run_config, fileset, cfg_hook, hook_def))]
 pub fn get_matching_files(
+    run_config: &RunConfig,
     fileset: &FileSet,
     cfg_hook: &Hook,
     hook_def: &PrecommitHook,
 ) -> anyhow::Result<HashSet<Rc<PathBuf>>> {
+    if run_config.files.is_some() {
+        warn!(
+            "not implemented: files in run configuration; not honoring {}",
+            run_config.files.as_ref().unwrap()
+        );
+    }
+    if run_config.exclude.is_some() {
+        warn!(
+            "not implemented: exclude in run configuration; not honoring {}",
+            run_config.exclude.as_ref().unwrap()
+        );
+    }
     if cfg_hook.exclude.is_some() {
         warn!(
             "not implemented: exclude in user configuration; not honoring {}",

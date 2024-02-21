@@ -4,10 +4,11 @@ use std::fmt::Display;
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct PrecommitConfig {
-    pub minimum_pre_commit_version: Option<String>, // TODO: unimplemented
+    pub minimum_pre_commit_version: Option<String>,
     #[serde(default)]
-    pub fail_fast: bool,       // TODO: unimplemented
-    pub exclude: Option<String>,                    // TODO: unimplemented
+    pub fail_fast: bool,
+    pub files: Option<String>,   // TODO: unimplemented
+    pub exclude: Option<String>, // TODO: unimplemented
     pub repos: Vec<Repo>,
 }
 

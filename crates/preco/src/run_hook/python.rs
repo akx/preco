@@ -7,11 +7,12 @@ use tracing::{debug, instrument, trace_span, warn};
 pub(crate) fn run_python_hook(rhc: &RunHookCtx) -> Result<RunHookResult> {
     let RunHookCtx {
         cfg_hook,
+        fileset,
         hook_def,
         loaded_checkout,
-        fileset,
+        run_config,
     } = *rhc;
-    let matching_files = helpers::get_matching_files(fileset, cfg_hook, hook_def)?;
+    let matching_files = helpers::get_matching_files(run_config, fileset, cfg_hook, hook_def)?;
     if matching_files.is_empty() {
         debug!("no matching files for hook {}", hook_def.id);
         return Ok(RunHookResult::Skipped("no matching files".to_string()));
