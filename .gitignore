@@ -9,4 +9,3 @@ flamegraph.svg
 perf.data*
 profile.json
 target/
-/preco-checkouts

@@ -1,5 +1,6 @@
 use crate::cfg::pre_commit_config::{HookConfiguration, Repo, RepoURL};
 use crate::cfg::pre_commit_hooks::PrecommitHooks;
+use crate::dirs::get_checkouts_dir;
 use crate::helpers;
 use anyhow::bail;
 use std::fs;
@@ -12,6 +13,7 @@ pub(crate) struct Checkout {
     pub(crate) repo_rev: String,
     pub(crate) path: PathBuf,
 }
+
 #[derive(Debug)]
 pub(crate) struct LoadedCheckout {
     pub(crate) path: PathBuf,
@@ -71,7 +73,8 @@ impl Checkout {
 
 pub fn get_checkout(repo: &Repo, hook: &HookConfiguration) -> anyhow::Result<Checkout> {
     let mut path_str = format!(
-        "preco-checkouts/{}/{}",
+        "{}/{}/{}",
+        get_checkouts_dir().to_str().unwrap(),
         normalize_repo_url_to_path(&repo.url.to_string())?,
         normalize_repo_url_to_path(&repo.rev)?
     );
