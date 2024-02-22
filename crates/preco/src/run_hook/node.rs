@@ -9,6 +9,7 @@ const NODE_MODULES_DIR_NAME: &str = "node_modules_preco";
 
 pub(crate) fn run_node_hook(rhc: &RunHookCtx) -> Result<RunHookResult> {
     let RunHookCtx {
+        dry_run,
         files: mf,
         hook,
         info: _,
@@ -39,6 +40,9 @@ pub(crate) fn run_node_hook(rhc: &RunHookCtx) -> Result<RunHookResult> {
 
     let run_span = trace_span!("run command", command = command);
     let _enter = run_span.enter();
+    if dry_run {
+        return Ok(RunHookResult::Skipped("dry-run".to_string()));
+    }
     let status = std::process::Command::new("sh") // TODO: windows
         .env("NODE_PATH", node_modules_path)
         .env("PATH", path_with_node_modules_bin)

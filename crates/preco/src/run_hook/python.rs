@@ -8,6 +8,7 @@ use tracing::{debug, instrument, trace_span};
 
 pub(crate) fn run_python_hook(rhc: &RunHookCtx) -> Result<RunHookResult> {
     let RunHookCtx {
+        dry_run,
         files: mf,
         hook,
         info: _,
@@ -31,6 +32,9 @@ pub(crate) fn run_python_hook(rhc: &RunHookCtx) -> Result<RunHookResult> {
 
     let run_span = trace_span!("run command", command = command);
     let _enter = run_span.enter();
+    if dry_run {
+        return Ok(RunHookResult::Skipped("dry-run".to_string()));
+    }
     let status = std::process::Command::new("sh") // TODO: windows
         .env_remove("PYTHONHOME")
         .env("VIRTUAL_ENV", &venv_path)

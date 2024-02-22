@@ -26,6 +26,10 @@ pub struct RunArgs {
     #[arg(long)]
     all_files: bool,
 
+    /// Do everything except actually run the hook.
+    #[arg(long)]
+    dry_run: bool,
+
     /// Hook ID(s) or alias(es) to run. If unset, everything is run.
     hooks: Option<Vec<String>>,
 }
@@ -122,6 +126,7 @@ pub(crate) fn run(args: &RunArgs) -> Result<ExitCode> {
                 hook: &hook,
                 info,
                 files: &matching_files,
+                dry_run: args.dry_run,
             };
 
             // TODO: track changes to files before/after runs

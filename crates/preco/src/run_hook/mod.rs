@@ -18,6 +18,7 @@ pub struct RunHookCtx<'a> {
     pub hook: &'a HookDefinition,
     pub info: &'a HookConfigurationInfo,
     pub files: &'a MatchingFiles,
+    pub dry_run: bool,
 }
 
 pub enum RunHookResult {
@@ -26,7 +27,7 @@ pub enum RunHookResult {
     Skipped(String),
 }
 
-#[instrument(skip(rhc), fields(hook_id=rhc.hook.id))]
+#[instrument(skip(rhc), fields(hook_id = rhc.hook.id))]
 pub fn run_hook(rhc: &RunHookCtx) -> anyhow::Result<RunHookResult> {
     match &rhc.hook.language {
         LanguageOrUnknown::Language(lang) => match lang {
