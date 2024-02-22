@@ -677,6 +677,8 @@ dependencies = [
  "futures",
  "git2",
  "identify",
+ "once_cell",
+ "regex",
  "rustc-hash",
  "serde",
  "serde_yaml",

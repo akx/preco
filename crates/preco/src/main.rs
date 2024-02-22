@@ -16,6 +16,7 @@ mod file_set;
 mod git;
 mod helpers;
 mod logging;
+mod regex_cache;
 mod run_hook;
 
 #[derive(Parser)]

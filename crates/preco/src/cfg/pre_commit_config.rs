@@ -8,8 +8,8 @@ pub struct PrecommitConfig {
     pub minimum_pre_commit_version: Option<String>,
     #[serde(default)]
     pub fail_fast: bool,
-    pub files: Option<String>,   // TODO: unimplemented
-    pub exclude: Option<String>, // TODO: unimplemented
+    pub files: Option<String>,
+    pub exclude: Option<String>,
     pub repos: Vec<Repo>,
 }
 

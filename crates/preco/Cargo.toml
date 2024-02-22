@@ -18,6 +18,8 @@ directories = { workspace = true }
 futures = { workspace = true }
 git2 = { workspace = true }
 identify = { path = "../identify" }
+once_cell = { workspace = true }
+regex = { workspace = true }
 rustc-hash = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_yaml = { workspace = true }

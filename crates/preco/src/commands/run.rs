@@ -6,9 +6,11 @@ use crate::run_hook::RunHookCtx;
 use crate::{checkout, run_hook};
 
 use crate::file_matching::get_matching_files;
+use crate::regex_cache::get_regex_with_warning;
 use anyhow::{bail, Result};
 use checkout::get_checkout;
 use clap::Args;
+use regex::Regex;
 use run_hook::RunHookResult;
 use serde_yaml::from_reader;
 use std::collections::HashMap;
@@ -23,12 +25,14 @@ pub struct RunArgs {
     #[arg(long)]
     all_files: bool,
 }
+
 #[derive(Debug, Clone)]
 pub struct RunConfig {
     pub fail_fast: bool,
-    pub files: Option<String>,
-    pub exclude: Option<String>,
+    pub files_re: Option<Regex>,
+    pub exclude_re: Option<Regex>,
 }
+
 #[instrument(skip(args))]
 pub(crate) fn run(args: &RunArgs) -> Result<ExitCode> {
     let root_path = canonicalize(PathBuf::from("."))?;
@@ -41,12 +45,19 @@ pub(crate) fn run(args: &RunArgs) -> Result<ExitCode> {
 
     let fileset = get_file_set(&root_path, args.all_files)?;
     info!("Running on {} files", fileset.files.len());
+    // TODO: should probably apply global exclude + files here!
 
     let precommit_config: PrecommitConfig = from_reader(rdr)?;
     let run_config: RunConfig = RunConfig {
         fail_fast: precommit_config.fail_fast,
-        exclude: precommit_config.exclude,
-        files: precommit_config.files,
+        exclude_re: get_regex_with_warning(
+            precommit_config.exclude.as_deref(),
+            "unable to compile regex for `exclude`",
+        ),
+        files_re: get_regex_with_warning(
+            precommit_config.files.as_deref(),
+            "unable to compile regex for `files`",
+        ),
     };
     let mut checkouts: HashMap<PathBuf, LoadedCheckout> = HashMap::new();
     for repo in &precommit_config.repos {

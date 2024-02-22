@@ -1,10 +1,11 @@
 use crate::cfg::pre_commit_hooks::HookDefinition;
 use crate::commands::run::RunConfig;
 use crate::file_set::FileSet;
+use crate::regex_cache::get_regex_with_warning;
 use std::collections::HashSet;
 use std::path::PathBuf;
 use std::rc::Rc;
-use tracing::{instrument, warn};
+use tracing::{debug, instrument, warn};
 
 #[derive(Debug)]
 pub(crate) struct MatchingFiles {
@@ -24,32 +25,50 @@ pub(crate) fn get_matching_files(
     fileset: &FileSet,
     hook: &HookDefinition,
 ) -> anyhow::Result<MatchingFiles> {
-    if run_config.files.is_some() {
-        warn!(
-            "not implemented: files in run configuration; not honoring {}",
-            run_config.files.as_ref().unwrap()
-        );
-    }
-    if run_config.exclude.is_some() {
-        warn!(
-            "not implemented: exclude in run configuration; not honoring {}",
-            run_config.exclude.as_ref().unwrap()
-        );
-    }
-    if hook.exclude.is_some() {
-        warn!(
-            "not implemented: exclude in hook configuration; not honoring {}",
-            hook.exclude.as_ref().unwrap()
-        );
-    }
-    if hook.files.is_some() {
-        warn!(
-            "not implemented: files in hook configuration; not honoring {}",
-            hook.files.as_ref().unwrap()
-        );
-    }
+    let run_config_files_re = &run_config.files_re;
+    let run_config_exclude_re = &run_config.exclude_re;
+    let hook_exclude_re = get_regex_with_warning(
+        hook.exclude.as_deref(),
+        "unable to compile regex for `exclude`",
+    );
+    let hook_files_re =
+        get_regex_with_warning(hook.files.as_deref(), "unable to compile regex for `files`");
     let mut matching_files = HashSet::new();
     for file in fileset.files.iter() {
+        if run_config_files_re.is_some()
+            || run_config_exclude_re.is_some()
+            || hook_exclude_re.is_some()
+            || hook_files_re.is_some()
+        {
+            let file_str = file.to_string_lossy();
+            if let Some(run_config_files_re) = run_config_files_re {
+                if !run_config_files_re.is_match(&file_str) {
+                    debug!(
+                        "skipping file: {} does not match run_config.files",
+                        file_str
+                    );
+                    continue;
+                }
+            }
+            if let Some(run_config_exclude_re) = run_config_exclude_re {
+                if run_config_exclude_re.is_match(&file_str) {
+                    debug!("skipping file: {} matches run_config.exclude", file_str);
+                    continue;
+                }
+            }
+            if let Some(hook_exclude_re) = &hook_exclude_re {
+                if hook_exclude_re.is_match(&file_str) {
+                    debug!("skipping file: {} matches hook.exclude", file_str);
+                    continue;
+                }
+            }
+            if let Some(hook_files_re) = &hook_files_re {
+                if !hook_files_re.is_match(&file_str) {
+                    debug!("skipping file: {} does not match hook.files", file_str);
+                    continue;
+                }
+            }
+        }
         if let Some(types) = &hook.types {
             if !types.is_empty() && types.iter().all(|t| fileset.has_type(file, t)) {
                 matching_files.insert(Rc::clone(file));
