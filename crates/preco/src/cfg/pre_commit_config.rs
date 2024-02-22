@@ -56,7 +56,7 @@ pub struct HookConfiguration {
 #[serde(deny_unknown_fields)]
 pub struct HookConfigurationInfo {
     /// Additional id for command line
-    pub alias: Option<String>, // TODO: unimplemented.
+    pub alias: Option<String>,
     /// Override language version
     pub language_version: Option<String>,
     #[serde(default)]

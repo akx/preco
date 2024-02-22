@@ -12,6 +12,7 @@ use checkout::get_checkout;
 use clap::Args;
 use regex::Regex;
 use run_hook::RunHookResult;
+use rustc_hash::FxHashSet;
 use serde_yaml::from_reader;
 use std::collections::HashMap;
 use std::fs;
@@ -24,6 +25,9 @@ use tracing::{debug, error, info, instrument, warn};
 pub struct RunArgs {
     #[arg(long)]
     all_files: bool,
+
+    /// Hook ID(s) or alias(es) to run. If unset, everything is run.
+    hooks: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone)]
@@ -42,6 +46,8 @@ pub(crate) fn run(args: &RunArgs) -> Result<ExitCode> {
             root_path.display()
         )
     })?;
+    let mut selected_hooks = FxHashSet::default();
+    selected_hooks.extend(args.hooks.iter().flatten().cloned());
 
     let fileset = get_file_set(&root_path, args.all_files)?;
     info!("Running on {} files", fileset.files.len());
@@ -65,6 +71,18 @@ pub(crate) fn run(args: &RunArgs) -> Result<ExitCode> {
         let span = tracing::debug_span!("repo", url = ru);
         let _ = span.enter();
         for hook_cfg in &repo.hooks {
+            if !selected_hooks.is_empty() {
+                let alias = hook_cfg.info.alias.as_ref();
+                if !selected_hooks.contains(&hook_cfg.id)
+                    && alias.map(|a| selected_hooks.contains(a)).is_none()
+                {
+                    debug!(
+                        "skipping hook {} due to command line configuration",
+                        hook_cfg.id
+                    );
+                    continue;
+                }
+            }
             let co = get_checkout(repo, hook_cfg)?;
             let loaded_checkout = checkouts.entry(co.path.clone()).or_insert_with(|| {
                 debug!("loading checkout {}", co.path.display());
