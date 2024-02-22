@@ -2,7 +2,7 @@ use crate::cfg::pre_commit_config::{HookConfiguration, Repo, RepoURL};
 use crate::cfg::pre_commit_hooks::PrecommitHooks;
 use crate::dirs::get_checkouts_dir;
 use crate::helpers;
-use anyhow::bail;
+use anyhow::{bail, Context};
 use std::fs;
 use std::path::PathBuf;
 use tracing::debug;
@@ -56,14 +56,10 @@ impl Checkout {
 
     pub fn load(self) -> anyhow::Result<LoadedCheckout> {
         let pre_commit_hooks_path = self.path.join(".pre-commit-hooks.yaml");
-        if !pre_commit_hooks_path.exists() {
-            bail!(
-                "Could not find .pre-commit-hooks.yaml in {}",
-                pre_commit_hooks_path.display()
-            );
-        }
-        let rdr = fs::File::open(&pre_commit_hooks_path)?;
-        let hooks: PrecommitHooks = serde_yaml::from_reader(rdr)?;
+        let rdr = fs::File::open(&pre_commit_hooks_path)
+            .with_context(|| format!("unable to open {}", pre_commit_hooks_path.display()))?;
+        let hooks: PrecommitHooks = serde_yaml::from_reader(rdr)
+            .with_context(|| format!("could not parse {}", pre_commit_hooks_path.display()))?;
         Ok(LoadedCheckout {
             path: self.path,
             hooks,

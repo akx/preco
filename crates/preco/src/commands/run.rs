@@ -7,7 +7,7 @@ use crate::{checkout, run_hook};
 
 use crate::file_matching::get_matching_files;
 use crate::regex_cache::get_regex_with_warning;
-use anyhow::{bail, Result};
+use anyhow::{bail, Context, Result};
 use checkout::get_checkout;
 use clap::Args;
 use regex::Regex;
@@ -40,12 +40,12 @@ pub struct RunConfig {
 #[instrument(skip(args))]
 pub(crate) fn run(args: &RunArgs) -> Result<ExitCode> {
     let root_path = canonicalize(PathBuf::from("."))?;
-    let rdr = fs::File::open(root_path.join(".pre-commit-config.yaml")).or_else(|_| {
-        bail!(
-            "no .pre-commit-config.yaml found in {}",
-            root_path.display()
-        )
-    })?;
+    let pre_commit_config_path = root_path.join(".pre-commit-config.yaml");
+    let rdr = fs::File::open(&pre_commit_config_path)
+        .with_context(|| format!("unable to open {}", pre_commit_config_path.display()))?;
+    let precommit_config: PrecommitConfig = from_reader(rdr)
+        .with_context(|| format!("could not parse {}", pre_commit_config_path.display()))?;
+
     let mut selected_hooks = FxHashSet::default();
     selected_hooks.extend(args.hooks.iter().flatten().cloned());
 
@@ -53,7 +53,6 @@ pub(crate) fn run(args: &RunArgs) -> Result<ExitCode> {
     info!("Running on {} files", fileset.files.len());
     // TODO: should probably apply global exclude + files here!
 
-    let precommit_config: PrecommitConfig = from_reader(rdr)?;
     let run_config: RunConfig = RunConfig {
         fail_fast: precommit_config.fail_fast,
         exclude_re: get_regex_with_warning(
