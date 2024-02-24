@@ -32,6 +32,9 @@ pub struct RunArgs {
 
     /// Hook ID(s) or alias(es) to run. If unset, everything is run.
     hooks: Option<Vec<String>>,
+
+    #[clap(long, hide = true, conflicts_with = "hooks")]
+    git_hook: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -51,7 +54,13 @@ pub(crate) fn run(args: &RunArgs) -> Result<ExitCode> {
         .with_context(|| format!("could not parse {}", pre_commit_config_path.display()))?;
 
     let mut selected_hooks = FxHashSet::default();
-    selected_hooks.extend(args.hooks.iter().flatten().cloned());
+    if let Some(git_hook) = &args.git_hook {
+        selected_hooks.insert(git_hook);
+    } else if let Some(hooks) = &args.hooks {
+        for hook in hooks {
+            selected_hooks.insert(hook);
+        }
+    }
 
     let fileset = get_file_set(&root_path, args.all_files)?;
     info!("Running on {} files", fileset.files.len());
@@ -144,5 +153,5 @@ pub(crate) fn run(args: &RunArgs) -> Result<ExitCode> {
             }
         }
     }
-    Ok(ExitCode::SUCCESS)
+    Ok(ExitCode::SUCCESS) // TODO: this should return a proper exit code if there were failures or changes
 }

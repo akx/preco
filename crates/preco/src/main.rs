@@ -1,10 +1,10 @@
 use std::io::stdout;
 use std::process::ExitCode;
 
-use crate::commands::run::run;
+use crate::commands::install::{install, uninstall, InstallArgs, UninstallArgs};
+use crate::commands::run::{run, RunArgs};
 use anyhow::{Error, Result};
 use clap::{CommandFactory, Parser, Subcommand};
-use commands::run::RunArgs;
 use tracing::instrument;
 
 mod cfg;
@@ -34,6 +34,8 @@ struct Cli {
 #[allow(clippy::large_enum_variant)]
 enum Commands {
     Run(RunArgs),
+    Install(InstallArgs),
+    Uninstall(UninstallArgs),
     #[clap(alias = "--generate-shell-completion", hide = true)]
     GenerateShellCompletion {
         shell: clap_complete_command::Shell,
@@ -48,6 +50,8 @@ async fn run_main() -> Result<ExitCode> {
 
     match cli.command {
         Commands::Run(args) => run(&args),
+        Commands::Install(args) => install(&args),
+        Commands::Uninstall(args) => uninstall(&args),
         Commands::GenerateShellCompletion { shell } => {
             shell.generate(&mut Cli::command(), &mut stdout());
             Ok(ExitCode::SUCCESS)
