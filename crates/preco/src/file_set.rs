@@ -1,10 +1,11 @@
-use crate::git::files::get_git_tracked_files;
+use crate::git::files::{get_git_tracked_files, get_staged_files, get_unstaged_files};
 use anyhow::bail;
+use git2::Repository;
 use identify::mappings::{map_extension, map_name};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::rc::Rc;
-use tracing::instrument;
+use tracing::{debug, instrument};
 
 #[derive(Debug)]
 pub(crate) struct FileSet {
@@ -28,11 +29,20 @@ impl FileSet {
 
 #[instrument]
 pub(crate) fn get_file_set(root_path: &PathBuf, all_files: bool) -> anyhow::Result<FileSet> {
+    let repo = Repository::open(root_path)?;
     let files_raw = if all_files {
-        get_git_tracked_files(root_path)?
+        get_git_tracked_files(&repo)?
     } else {
-        bail!("not implemented: not --all-files");
+        let unstaged = get_unstaged_files(&repo)?;
+        if !unstaged.is_empty() {
+            bail!(
+                "We can't deal with stashing unstaged files yet (and you have: {:?})",
+                unstaged
+            );
+        }
+        get_staged_files(&repo)?
     };
+    debug!("files_raw: {:?}", files_raw);
     let files: Vec<Rc<PathBuf>> = files_raw.into_iter().map(Rc::new).collect();
     let mut files_by_type: HashMap<String, Vec<Rc<PathBuf>>> = HashMap::new();
     for file in &files {
