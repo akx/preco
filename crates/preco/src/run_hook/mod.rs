@@ -6,7 +6,6 @@ use crate::checkout::LoadedCheckout;
 use crate::commands::run::RunConfig;
 use crate::file_matching::MatchingFiles;
 
-pub(crate) mod configured_hook;
 mod helpers;
 mod node;
 mod python;
