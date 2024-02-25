@@ -2,7 +2,9 @@ use crate::file_matching::MatchingFiles;
 use crate::helpers::{hash_additional_dependencies, prepend_to_path_envvar};
 use crate::run_hook::{helpers, RunHookCtx, RunHookResult};
 use anyhow::Result;
+use std::path::PathBuf;
 
+use crate::commando::run_command;
 use tracing::{debug, instrument, trace_span};
 
 const NODE_MODULES_DIR_NAME: &str = "node_modules_preco";
@@ -12,7 +14,7 @@ pub(crate) fn run_node_hook(rhc: &RunHookCtx) -> Result<RunHookResult> {
         dry_run,
         files: mf,
         hook,
-        info: _,
+        info,
         loaded_checkout,
         run_config: _,
     } = *rhc;
@@ -43,18 +45,18 @@ pub(crate) fn run_node_hook(rhc: &RunHookCtx) -> Result<RunHookResult> {
     if dry_run {
         return Ok(RunHookResult::Skipped("dry-run".to_string()));
     }
-    let status = std::process::Command::new("sh") // TODO: windows
-        .env("NODE_PATH", node_modules_path)
-        .env("PATH", path_with_node_modules_bin)
-        .arg("-c") // TODO: windows
-        .arg(command)
-        .current_dir(root_path)
-        .status()?;
-    Ok(if status.success() {
-        RunHookResult::Success
-    } else {
-        RunHookResult::Failure
-    })
+    let res = run_command(
+        &command,
+        root_path,
+        &[
+            ("NODE_PATH", node_modules_path),
+            ("PATH", PathBuf::from(path_with_node_modules_bin)),
+        ],
+        &[],
+        info.verbose,
+    )?;
+    res.print_output_if_failed();
+    Ok(res.to_run_hook_result())
 }
 
 fn get_node_modules_name(rhc: &RunHookCtx) -> String {

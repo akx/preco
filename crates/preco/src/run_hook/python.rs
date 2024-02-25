@@ -1,3 +1,4 @@
+use crate::commando::run_command;
 use crate::file_matching::MatchingFiles;
 use crate::helpers::hash_additional_dependencies;
 use crate::helpers::prepend_to_path_envvar;
@@ -11,7 +12,7 @@ pub(crate) fn run_python_hook(rhc: &RunHookCtx) -> Result<RunHookResult> {
         dry_run,
         files: mf,
         hook,
-        info: _,
+        info,
         loaded_checkout: _,
         run_config: _,
     } = *rhc;
@@ -35,19 +36,18 @@ pub(crate) fn run_python_hook(rhc: &RunHookCtx) -> Result<RunHookResult> {
     if dry_run {
         return Ok(RunHookResult::Skipped("dry-run".to_string()));
     }
-    let status = std::process::Command::new("sh") // TODO: windows
-        .env_remove("PYTHONHOME")
-        .env("VIRTUAL_ENV", &venv_path)
-        .env("PATH", path_with_venv)
-        .arg("-c") // TODO: windows
-        .arg(command)
-        .current_dir(root_path)
-        .status()?;
-    Ok(if status.success() {
-        RunHookResult::Success
-    } else {
-        RunHookResult::Failure
-    })
+    let res = run_command(
+        &command,
+        root_path,
+        &[
+            ("VIRTUAL_ENV", venv_path),
+            ("PATH", PathBuf::from(path_with_venv)),
+        ],
+        &["PYTHONHOME"],
+        info.verbose,
+    )?;
+    res.print_output_if_failed();
+    Ok(res.to_run_hook_result())
 }
 
 const VENV_DIR_NAME: &str = ".preco-venv";

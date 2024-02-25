@@ -140,9 +140,6 @@ pub(crate) fn run(args: &RunArgs) -> Result<ExitCode> {
     {
         let info = &hook_cfg.info;
 
-        if info.verbose {
-            warn!("verbose hooks not implemented");
-        }
         if info.log_file.is_some() {
             warn!(
                 "log_file not implemented, not honoring {}",

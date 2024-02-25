@@ -10,6 +10,7 @@ use tracing::instrument;
 
 mod cfg;
 mod checkout;
+mod commando;
 mod commands;
 mod dirs;
 mod file_matching;
