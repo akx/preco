@@ -1,3 +1,4 @@
+use std::env::set_current_dir;
 use std::io::stdout;
 use std::process::ExitCode;
 
@@ -28,6 +29,9 @@ struct Cli {
 
     #[arg(global = true, long, env = "PRECO_TRACING")]
     tracing: bool,
+
+    #[clap(long, hide = true)]
+    cwd: Option<String>,
 }
 
 #[derive(Subcommand)]
@@ -47,6 +51,9 @@ async fn run_main() -> Result<ExitCode> {
     let cli = Cli::try_parse()?;
 
     logging::setup_logging(cli.tracing);
+    if let Some(cwd) = &cli.cwd {
+        set_current_dir(cwd)?;
+    }
 
     match cli.command {
         Commands::Run(args) => run(&args),
