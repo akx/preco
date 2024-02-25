@@ -1,3 +1,4 @@
+use std::collections::BTreeSet;
 use std::fs;
 use std::fs::canonicalize;
 use std::path::PathBuf;
@@ -6,7 +7,6 @@ use std::process::ExitCode;
 use anyhow::{anyhow, bail, Context, Result};
 use clap::Args;
 use regex::Regex;
-use rustc_hash::FxHashSet;
 use serde_yaml::from_reader;
 use tracing::{debug, error, info, instrument, warn};
 
@@ -59,7 +59,7 @@ pub(crate) fn run(args: &RunArgs) -> Result<ExitCode> {
     let precommit_config: PrecommitConfig = from_reader(rdr)
         .with_context(|| format!("could not parse {}", pre_commit_config_path.display()))?;
 
-    let mut selected_hooks = FxHashSet::default();
+    let mut selected_hooks = BTreeSet::default();
     if let Some(git_hook) = &args.git_hook {
         selected_hooks.insert(git_hook);
     } else if let Some(hooks) = &args.hooks {

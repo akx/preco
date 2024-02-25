@@ -1,11 +1,12 @@
 use once_cell::sync::Lazy;
 use regex::Regex;
-use rustc_hash::FxHashMap;
+use std::collections::BTreeMap;
 use std::sync::Mutex;
 use tracing::warn;
 
-static REGEX_CACHE: Lazy<Mutex<FxHashMap<String, Result<Regex, regex::Error>>>> =
-    Lazy::new(|| Mutex::new(FxHashMap::default()));
+type RegexMap = BTreeMap<String, Result<Regex, regex::Error>>;
+
+static REGEX_CACHE: Lazy<Mutex<RegexMap>> = Lazy::new(|| Mutex::new(RegexMap::default()));
 
 /// Get a regex from the cache, or compile and cache it.
 pub(crate) fn get_regex(pattern: &str) -> Result<Regex, regex::Error> {

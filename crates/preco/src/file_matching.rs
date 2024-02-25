@@ -2,15 +2,17 @@ use crate::cfg::pre_commit_hooks::HookDefinition;
 use crate::commands::run::RunConfig;
 use crate::file_set::FileSet;
 use crate::regex_cache::get_regex_with_warning;
-use std::collections::HashSet;
+use std::collections::BTreeSet;
 use std::path::PathBuf;
 use std::rc::Rc;
 use tracing::{debug, instrument, warn};
 
+type PathBufSet = BTreeSet<Rc<PathBuf>>;
+
 #[derive(Debug)]
 pub(crate) struct MatchingFiles {
     pub(crate) root_path: PathBuf,
-    pub(crate) files: HashSet<Rc<PathBuf>>,
+    pub(crate) files: PathBufSet,
 }
 
 impl MatchingFiles {
@@ -33,7 +35,7 @@ pub(crate) fn get_matching_files(
     );
     let hook_files_re =
         get_regex_with_warning(hook.files.as_deref(), "unable to compile regex for `files`");
-    let mut matching_files = HashSet::new();
+    let mut matching_files = PathBufSet::new();
     for file in fileset.files.iter() {
         if run_config_files_re.is_some()
             || run_config_exclude_re.is_some()
@@ -69,16 +71,18 @@ pub(crate) fn get_matching_files(
                 }
             }
         }
+        let mut matched = false;
         if let Some(types) = &hook.types {
             if !types.is_empty() && types.iter().all(|t| fileset.has_type(file, t)) {
                 matching_files.insert(Rc::clone(file));
-                // TODO: break here if inserted
+                matched = true;
             }
         }
-        if let Some(types_or) = &hook.types_or {
-            if !types_or.is_empty() && types_or.iter().any(|t| fileset.has_type(file, t)) {
-                matching_files.insert(Rc::clone(file));
-                // TODO: break here if inserted
+        if !matched {
+            if let Some(types_or) = &hook.types_or {
+                if !types_or.is_empty() && types_or.iter().any(|t| fileset.has_type(file, t)) {
+                    matching_files.insert(Rc::clone(file));
+                }
             }
         }
     }
