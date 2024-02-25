@@ -1,8 +1,8 @@
 use crate::cfg::pre_commit_hooks::StageOrUnknown;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use std::fmt::Display;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Deserialize, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct PrecommitConfig {
     pub minimum_pre_commit_version: Option<String>,
@@ -13,7 +13,7 @@ pub struct PrecommitConfig {
     pub repos: Vec<Repo>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Deserialize, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct Repo {
     #[serde(rename = "repo")]
@@ -22,7 +22,7 @@ pub struct Repo {
     pub hooks: Vec<HookConfiguration>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, Hash, Eq, PartialEq)]
+#[derive(Deserialize, Clone, Debug, Hash, Eq, PartialEq)]
 #[serde(untagged)]
 #[serde(rename_all = "snake_case")]
 pub enum RepoURL {
@@ -42,7 +42,7 @@ impl Display for RepoURL {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Deserialize, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct HookConfiguration {
     pub id: String,
@@ -52,7 +52,7 @@ pub struct HookConfiguration {
     pub overrides: HookDefinitionOverrides,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Deserialize, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct HookConfigurationInfo {
     /// Additional id for command line
@@ -64,7 +64,7 @@ pub struct HookConfigurationInfo {
     pub log_file: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Deserialize, Debug)]
 #[serde(deny_unknown_fields)]
 /// See HookDefinition for documentation.
 pub struct HookDefinitionOverrides {
