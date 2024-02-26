@@ -1,4 +1,5 @@
 use crate::cfg::pre_commit_hooks::StageOrUnknown;
+use identify::mappings::Type;
 use serde::Deserialize;
 use std::fmt::Display;
 
@@ -72,9 +73,21 @@ pub struct HookDefinitionOverrides {
     pub description: Option<String>,
     pub files: Option<String>,
     pub exclude: Option<String>,
-    pub types: Option<Vec<String>>,
-    pub types_or: Option<Vec<String>>,
-    pub exclude_types: Option<Vec<String>>,
+    #[serde(
+        default,
+        deserialize_with = "crate::cfg::parsing::deserialize_type_list"
+    )]
+    pub types: Option<Vec<Type>>,
+    #[serde(
+        default,
+        deserialize_with = "crate::cfg::parsing::deserialize_type_list"
+    )]
+    pub types_or: Option<Vec<Type>>,
+    #[serde(
+        default,
+        deserialize_with = "crate::cfg::parsing::deserialize_type_list"
+    )]
+    pub exclude_types: Option<Vec<Type>>,
     pub additional_dependencies: Option<Vec<String>>,
     pub args: Option<Vec<String>>,
     pub stages: Option<Vec<StageOrUnknown>>,

@@ -20,11 +20,10 @@ pub(crate) struct FileSet {
 }
 
 impl FileSet {
-    pub(crate) fn has_type(&self, file: &Rc<PathBuf>, typename: &str) -> bool {
-        let typ = typename.parse().unwrap();
+    pub(crate) fn has_type(&self, file: &Rc<PathBuf>, typ: &Type) -> bool {
         self.types_by_file
             .get(file)
-            .map(|types| types.contains(&typ))
+            .map(|types| types.contains(typ))
             .unwrap_or(false)
     }
 

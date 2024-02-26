@@ -1,3 +1,4 @@
+use identify::mappings::Type;
 use serde::Deserialize;
 
 pub type PrecommitHooks = Vec<HookDefinition>;
@@ -29,9 +30,17 @@ pub struct HookDefinition {
     /// Stages to run the hook in. If unspecified, run in all stages.
     pub stages: Option<Vec<StageOrUnknown>>,
     /// File type names to run the hook on (AND condition).
-    pub types: Option<Vec<String>>,
+    #[serde(
+        default,
+        deserialize_with = "crate::cfg::parsing::deserialize_type_list"
+    )]
+    pub types: Option<Vec<Type>>,
     /// File type names to run the hook on (OR condition).
-    pub types_or: Option<Vec<String>>,
+    #[serde(
+        default,
+        deserialize_with = "crate::cfg::parsing::deserialize_type_list"
+    )]
+    pub types_or: Option<Vec<Type>>,
     /// File regex to run the hook on.
     pub files: Option<String>,
     /// File regex to exclude from running the hook.
