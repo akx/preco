@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use tracing::{debug, instrument, warn};
 
-type PathBufSet = BTreeSet<Arc<PathBuf>>;
+pub(crate) type PathBufSet = BTreeSet<Arc<PathBuf>>;
 
 #[derive(Debug)]
 pub(crate) struct MatchingFiles {

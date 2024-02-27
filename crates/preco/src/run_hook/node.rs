@@ -4,8 +4,8 @@ use crate::run_hook::{helpers, RunHookCtx, RunHookResult};
 use anyhow::Result;
 use std::path::PathBuf;
 
-use crate::commando::run_command;
-use tracing::{debug, instrument, trace_span};
+use crate::commando::run_command_on_files;
+use tracing::{debug, instrument};
 
 const NODE_MODULES_DIR_NAME: &str = "node_modules_preco";
 
@@ -29,24 +29,12 @@ pub(crate) fn run_node_hook(rhc: &RunHookCtx) -> Result<RunHookResult> {
     let node_modules_bin_path = loaded_checkout.path.join("node_modules").join(".bin");
     let path_with_node_modules_bin =
         prepend_to_path_envvar(&node_modules_bin_path.to_string_lossy())?;
-    let mut command = helpers::get_command(hook)?;
-    // TODO: will probably need to slice `command` in a `xargs` way to avoid coming up
-    //       with a command that's too long
-    if hook.pass_filenames {
-        command = format!(
-            "{} {}",
-            command,
-            shell_words::join(files.iter().map(|f| f.to_string_lossy()))
-        );
-    }
-
-    let run_span = trace_span!("run command", command = command);
-    let _enter = run_span.enter();
+    let base_command = helpers::get_command(hook)?;
     if dry_run {
         return Ok(RunHookResult::Skipped("dry-run".to_string()));
     }
-    let res = run_command(
-        &command,
+    let res = run_command_on_files(
+        &base_command,
         root_path,
         &[
             ("NODE_PATH", node_modules_path),
@@ -54,7 +42,13 @@ pub(crate) fn run_node_hook(rhc: &RunHookCtx) -> Result<RunHookResult> {
         ],
         &[],
         info.verbose,
-    )?;
+        if hook.pass_filenames {
+            Some(files)
+        } else {
+            None
+        },
+        hook.require_serial,
+    );
     res.print_output_if_failed();
     Ok(res.to_run_hook_result())
 }
