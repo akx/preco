@@ -12,7 +12,7 @@ use tracing::{debug, error, info, instrument, warn};
 
 use crate::cfg::pre_commit_config::PrecommitConfig;
 use crate::cfg::pre_commit_config::{HookConfiguration, HookDefinitionOverrides};
-use crate::cfg::pre_commit_hooks::HookDefinition;
+use crate::cfg::pre_commit_hooks::{HookDefinition, StageOrUnknown};
 use crate::checkout::get_checkout;
 use crate::checkout::LoadedCheckout;
 use crate::file_matching::{get_matching_files, MatchingFiles};
@@ -32,8 +32,8 @@ pub struct RunArgs {
     /// Hook ID(s) or alias(es) to run. If unset, everything is run.
     hooks: Option<Vec<String>>,
 
-    #[clap(long, hide = true, conflicts_with = "hooks")]
-    git_hook: Option<String>,
+    #[clap(long, hide = true)]
+    git_hook_stage: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -59,13 +59,19 @@ pub(crate) fn run(args: &RunArgs) -> Result<ExitCode> {
     let precommit_config: PrecommitConfig = from_reader(rdr)
         .with_context(|| format!("could not parse {}", pre_commit_config_path.display()))?;
 
-    let mut selected_hooks = BTreeSet::default();
-    if let Some(git_hook) = &args.git_hook {
-        selected_hooks.insert(git_hook);
-    } else if let Some(hooks) = &args.hooks {
-        for hook in hooks {
-            selected_hooks.insert(hook);
+    let selected_hooks: Option<BTreeSet<&String>> = match &args.hooks {
+        Some(hooks) => Some(hooks.iter().collect()),
+        None => None,
+    };
+    let selected_stage: Option<StageOrUnknown> = match &args.git_hook_stage {
+        // TODO: feels weird to use serde_yaml, but it works...
+        Some(stage) => {
+            Some(serde_yaml::from_str(stage).context("parsing `--git-hook-stage` failed")?)
         }
+        None => None,
+    };
+    if let Some(StageOrUnknown::Unknown(s)) = &selected_stage {
+        bail!("unknown stage: {}", s);
     }
 
     let fileset = get_file_set(&root_path, args.all_files)?;
@@ -90,13 +96,13 @@ pub(crate) fn run(args: &RunArgs) -> Result<ExitCode> {
         let span = tracing::debug_span!("repo", url = ru);
         let _ = span.enter();
         for hook_cfg in &repo.hooks {
-            if !selected_hooks.is_empty() {
+            if let Some(selected_hooks) = selected_hooks.as_ref() {
                 let alias = hook_cfg.info.alias.as_ref();
                 if !selected_hooks.contains(&hook_cfg.id)
                     && alias.map(|a| selected_hooks.contains(a)).is_none()
                 {
                     debug!(
-                        "skipping hook {} due to command line configuration",
+                        "skipping hook {} due to command line selecting hooks",
                         hook_cfg.id
                     );
                     continue;
@@ -110,6 +116,21 @@ pub(crate) fn run(args: &RunArgs) -> Result<ExitCode> {
             if hook.always_run {
                 warn!("always_run not implemented");
             }
+
+            if let Some(ref selected_stage) = selected_stage {
+                // TODO: support pre-commit-config.default_stages here
+                // If "stages" is not set on the hook, it will never be skipped
+                if let Some(stages) = &hook.stages {
+                    if !stages.contains(&selected_stage) {
+                        debug!(
+                            "skipping hook {} due to selected-stage configuration",
+                            hook_cfg.id
+                        );
+                        continue;
+                    }
+                }
+            }
+
             let matching_files = get_matching_files(&run_config, &fileset, &hook)?;
 
             if matching_files.is_empty() {

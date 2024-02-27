@@ -24,7 +24,7 @@ pub(crate) fn install(args: &InstallArgs) -> anyhow::Result<ExitCode> {
     }
     let git_hooks_dir = get_git_hooks_dir()?;
     for hook in HOOKS_TO_INSTALL {
-        install_hook(&git_hooks_dir, hook, args.force).with_context(|| {
+        install_hook(&git_hooks_dir, hook, hook, args.force).with_context(|| {
             format!(
                 "failed to install hook {} in {}",
                 hook,
@@ -50,7 +50,7 @@ fn get_git_hooks_dir() -> anyhow::Result<PathBuf> {
         .with_context(|| "failed to find git hooks directory; are you in a git repository's root?")
 }
 
-fn install_hook(git_hooks_dir: &Path, hook: &str, force: bool) -> anyhow::Result<()> {
+fn install_hook(git_hooks_dir: &Path, hook: &str, stage: &str, force: bool) -> anyhow::Result<()> {
     let hook_path = git_hooks_dir.join(hook);
     if is_preco_installed_hook(&hook_path)? == IsPrecoInstalledHookResult::IsNotPrecoHook {
         if force {
@@ -67,10 +67,10 @@ fn install_hook(git_hooks_dir: &Path, hook: &str, force: bool) -> anyhow::Result
         }
     }
     let hook_contents = format!(
-        "#!/bin/sh\n# {}\nexec {} run --git-hook={}\n",
+        "#!/bin/sh\n# {}\nexec {} run --git-hook-stage={}\n",
         PRECO_HOOK_MARKER,
         std::env::current_exe()?.display(),
-        shell_words::quote(hook),
+        shell_words::quote(stage),
     );
     std::fs::write(&hook_path, hook_contents)?;
     if cfg!(unix) {

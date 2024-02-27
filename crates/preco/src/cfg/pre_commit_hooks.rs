@@ -72,8 +72,24 @@ pub enum Language {
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum Stage {}
+#[serde(rename_all = "kebab-case")]
+pub enum Stage {
+    CommitMsg,
+    Manual,
+    PostCheckout,
+    PostCommit,
+    PostMerge,
+    PostRewrite,
+    #[serde(alias = "commit")]
+    PreCommit,
+    #[serde(alias = "merge-commit")]
+    PreMergeCommit,
+    #[serde(alias = "push")]
+    PrePush,
+    #[serde(alias = "rebase")]
+    PreRebase,
+    PrepareCommitMsg,
+}
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(untagged)]
