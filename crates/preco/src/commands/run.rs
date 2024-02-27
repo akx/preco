@@ -10,13 +10,13 @@ use regex::Regex;
 use serde_yaml::from_reader;
 use tracing::{debug, error, info, instrument, warn};
 
-use crate::cfg::pre_commit_config::PrecommitConfig;
 use crate::cfg::pre_commit_config::{HookConfiguration, HookDefinitionOverrides};
+use crate::cfg::pre_commit_config::{PrecommitConfig, Repo};
 use crate::cfg::pre_commit_hooks::{HookDefinition, StageOrUnknown};
 use crate::checkout::get_checkout;
 use crate::checkout::LoadedCheckout;
 use crate::file_matching::{get_matching_files, MatchingFiles};
-use crate::file_set::get_file_set;
+use crate::file_set::{get_file_set, FileSet};
 use crate::regex_cache::get_regex_with_warning;
 use crate::run_hook::{run_hook, RunHookCtx, RunHookResult};
 
@@ -90,61 +90,15 @@ pub(crate) fn run(args: &RunArgs) -> Result<ExitCode> {
         ),
     };
     let mut configured_hooks = Vec::new();
-    // TODO: parallelize the below loop
+    // TODO: parallelize the below loop?
     for repo in &precommit_config.repos {
-        let ru = repo.url.to_string();
-        let span = tracing::debug_span!("repo", url = ru);
-        let _ = span.enter();
-        for hook_cfg in &repo.hooks {
-            if let Some(selected_hooks) = selected_hooks.as_ref() {
-                let alias = hook_cfg.info.alias.as_ref();
-                if !selected_hooks.contains(&hook_cfg.id)
-                    && alias.map(|a| selected_hooks.contains(a)).is_none()
-                {
-                    debug!(
-                        "skipping hook {} due to command line selecting hooks",
-                        hook_cfg.id
-                    );
-                    continue;
-                }
-            }
-            let co = get_checkout(repo, hook_cfg)?;
-            co.ensure_checkout_cloned()?;
-            let loaded_checkout = co.load()?;
-            let hook = merge_hook_definition(&loaded_checkout, hook_cfg)?;
-
-            if hook.always_run {
-                warn!("always_run not implemented");
-            }
-
-            if let Some(ref selected_stage) = selected_stage {
-                // TODO: support pre-commit-config.default_stages here
-                // If "stages" is not set on the hook, it will never be skipped
-                if let Some(stages) = &hook.stages {
-                    if !stages.contains(&selected_stage) {
-                        debug!(
-                            "skipping hook {} due to selected-stage configuration",
-                            hook_cfg.id
-                        );
-                        continue;
-                    }
-                }
-            }
-
-            let matching_files = get_matching_files(&run_config, &fileset, &hook)?;
-
-            if matching_files.is_empty() {
-                warn!("hook {} skipped: no matching files", hook_cfg.id);
-                continue;
-            }
-
-            configured_hooks.push(ConfiguredHook {
-                hook_cfg,
-                loaded_checkout,
-                hook,
-                matching_files,
-            });
-        }
+        configured_hooks.extend(configure_hooks_from_repo(
+            &repo,
+            &run_config,
+            &selected_hooks,
+            &selected_stage,
+            &fileset,
+        )?);
     }
 
     if configured_hooks.is_empty() {
@@ -204,6 +158,70 @@ pub(crate) fn run(args: &RunArgs) -> Result<ExitCode> {
         }
     }
     Ok(ExitCode::SUCCESS) // TODO: this should return a proper exit code if there were failures or changes
+}
+
+fn configure_hooks_from_repo<'a>(
+    repo: &'a Repo,
+    run_config: &'a RunConfig,
+    selected_hooks: &'a Option<BTreeSet<&String>>,
+    selected_stage: &'a Option<StageOrUnknown>,
+    fileset: &'a FileSet,
+) -> Result<Vec<ConfiguredHook<'a>>> {
+    let mut repo_configured_hooks = Vec::new();
+    let ru = repo.url.to_string();
+    let span = tracing::debug_span!("repo", url = ru);
+    let _ = span.enter();
+    for hook_cfg in &repo.hooks {
+        if let Some(selected_hooks) = selected_hooks.as_ref() {
+            let alias = hook_cfg.info.alias.as_ref();
+            if !selected_hooks.contains(&hook_cfg.id)
+                && alias.map(|a| selected_hooks.contains(a)).is_none()
+            {
+                debug!(
+                    "skipping hook {} due to command line selecting hooks",
+                    hook_cfg.id
+                );
+                continue;
+            }
+        }
+        let co = get_checkout(repo, hook_cfg)?;
+        co.ensure_checkout_cloned()?;
+        let loaded_checkout = co.load()?;
+        let hook = merge_hook_definition(&loaded_checkout, hook_cfg)?;
+
+        if hook.always_run {
+            warn!("always_run not implemented");
+        }
+
+        if let Some(ref selected_stage) = selected_stage {
+            // TODO: support pre-commit-config.default_stages here
+            // If "stages" is not set on the hook, it will never be skipped
+            if let Some(stages) = &hook.stages {
+                if !stages.contains(&selected_stage) {
+                    debug!(
+                        "skipping hook {} due to selected-stage configuration",
+                        hook_cfg.id
+                    );
+                    continue;
+                }
+            }
+        }
+
+        let matching_files = get_matching_files(&run_config, &fileset, &hook)?;
+
+        if matching_files.is_empty() {
+            warn!("hook {} skipped: no matching files", hook_cfg.id);
+            continue;
+        }
+
+        repo_configured_hooks.push(ConfiguredHook {
+            hook_cfg,
+            loaded_checkout,
+            hook,
+            matching_files,
+        });
+    }
+    Ok(repo_configured_hooks)
 }
 
 pub(crate) fn merge_hook_definition(
