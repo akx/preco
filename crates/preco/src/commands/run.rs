@@ -60,12 +60,13 @@ pub(crate) fn run(args: &RunArgs) -> Result<ExitCode> {
     let precommit_config: PrecommitConfig = from_reader(rdr)
         .with_context(|| format!("could not parse {}", pre_commit_config_path.display()))?;
 
-    let selected_hooks: Option<BTreeSet<&String>> = args.hooks.as_ref().map(|hooks| hooks.iter().collect());
+    let selected_hooks: Option<BTreeSet<&String>> =
+        args.hooks.as_ref().map(|hooks| hooks.iter().collect());
     let selected_stage: Option<StageOrUnknown> = match &args.git_hook_stage {
-        // TODO: feels weird to use serde_yaml, but it works...
-        Some(stage) => {
-            Some(serde_yaml::from_str(stage).context("parsing `--git-hook-stage` failed")?)
-        }
+        Some(stage) => Some(
+            serde_plain::from_str::<StageOrUnknown>(stage)
+                .context("parsing `--git-hook-stage` failed")?,
+        ),
         None => None,
     };
     if let Some(StageOrUnknown::Unknown(s)) = &selected_stage {

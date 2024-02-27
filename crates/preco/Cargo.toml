@@ -23,6 +23,7 @@ rayon = { workspace = true }
 regex = { workspace = true }
 rustc-hash = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
+serde_plain = "1.0.2"
 serde_yaml = { workspace = true }
 shell-words = { workspace = true }
 tracing = { workspace = true }
