@@ -4,10 +4,10 @@ use crate::file_set::FileSet;
 use crate::regex_cache::get_regex_with_warning;
 use std::collections::BTreeSet;
 use std::path::PathBuf;
-use std::rc::Rc;
+use std::sync::Arc;
 use tracing::{debug, instrument, warn};
 
-type PathBufSet = BTreeSet<Rc<PathBuf>>;
+type PathBufSet = BTreeSet<Arc<PathBuf>>;
 
 #[derive(Debug)]
 pub(crate) struct MatchingFiles {
@@ -74,14 +74,14 @@ pub(crate) fn get_matching_files(
         let mut matched = false;
         if let Some(types) = &hook.types {
             if !types.is_empty() && types.iter().all(|t| fileset.has_type(file, t)) {
-                matching_files.insert(Rc::clone(file));
+                matching_files.insert(Arc::clone(file));
                 matched = true;
             }
         }
         if !matched {
             if let Some(types_or) = &hook.types_or {
                 if !types_or.is_empty() && types_or.iter().any(|t| fileset.has_type(file, t)) {
-                    matching_files.insert(Rc::clone(file));
+                    matching_files.insert(Arc::clone(file));
                 }
             }
         }

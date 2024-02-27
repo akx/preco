@@ -1,3 +1,4 @@
+use rayon::prelude::*;
 use std::collections::BTreeSet;
 use std::fs;
 use std::fs::canonicalize;
@@ -59,10 +60,7 @@ pub(crate) fn run(args: &RunArgs) -> Result<ExitCode> {
     let precommit_config: PrecommitConfig = from_reader(rdr)
         .with_context(|| format!("could not parse {}", pre_commit_config_path.display()))?;
 
-    let selected_hooks: Option<BTreeSet<&String>> = match &args.hooks {
-        Some(hooks) => Some(hooks.iter().collect()),
-        None => None,
-    };
+    let selected_hooks: Option<BTreeSet<&String>> = args.hooks.as_ref().map(|hooks| hooks.iter().collect());
     let selected_stage: Option<StageOrUnknown> = match &args.git_hook_stage {
         // TODO: feels weird to use serde_yaml, but it works...
         Some(stage) => {
@@ -89,21 +87,44 @@ pub(crate) fn run(args: &RunArgs) -> Result<ExitCode> {
             "unable to compile regex for `files`",
         ),
     };
-    let mut configured_hooks = Vec::new();
-    // TODO: parallelize the below loop?
-    for repo in &precommit_config.repos {
-        configured_hooks.extend(configure_hooks_from_repo(
-            &repo,
-            &run_config,
-            &selected_hooks,
-            &selected_stage,
-            &fileset,
-        )?);
-    }
+    let configured_hook_results = precommit_config
+        .repos
+        .par_iter()
+        .map(|repo| {
+            (
+                repo,
+                configure_hooks_from_repo(
+                    repo,
+                    &run_config,
+                    &selected_hooks,
+                    &selected_stage,
+                    &fileset,
+                ),
+            )
+        })
+        .collect::<Vec<_>>();
 
-    if configured_hooks.is_empty() {
+    if configured_hook_results.is_empty() {
         info!("Nothing to run!");
         return Ok(ExitCode::SUCCESS);
+    }
+
+    let mut configured_hooks = Vec::new();
+    let mut has_failures = false;
+
+    for (repo, result) in configured_hook_results {
+        match result {
+            Ok(hooks) => {
+                configured_hooks.extend(hooks);
+            }
+            Err(e) => {
+                error!("error configuring hooks from {}: {}", repo.url, e);
+                has_failures = true;
+            }
+        }
+    }
+    if has_failures {
+        bail!("failed to configure hooks");
     }
 
     for ConfiguredHook {
@@ -197,7 +218,7 @@ fn configure_hooks_from_repo<'a>(
             // TODO: support pre-commit-config.default_stages here
             // If "stages" is not set on the hook, it will never be skipped
             if let Some(stages) = &hook.stages {
-                if !stages.contains(&selected_stage) {
+                if !stages.contains(selected_stage) {
                     debug!(
                         "skipping hook {} due to selected-stage configuration",
                         hook_cfg.id
@@ -207,7 +228,7 @@ fn configure_hooks_from_repo<'a>(
             }
         }
 
-        let matching_files = get_matching_files(&run_config, &fileset, &hook)?;
+        let matching_files = get_matching_files(run_config, fileset, &hook)?;
 
         if matching_files.is_empty() {
             warn!("hook {} skipped: no matching files", hook_cfg.id);

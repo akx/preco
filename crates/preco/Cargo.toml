@@ -19,12 +19,12 @@ futures = { workspace = true }
 git2 = { workspace = true }
 identify = { path = "../identify" }
 once_cell = { workspace = true }
+rayon = { workspace = true }
 regex = { workspace = true }
 rustc-hash = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_yaml = { workspace = true }
 shell-words = { workspace = true }
-tokio = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true, features = ["tracing-log"] }
 tracing-tree = { workspace = true }

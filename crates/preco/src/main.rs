@@ -48,7 +48,7 @@ enum Commands {
 }
 
 #[instrument]
-async fn run_main() -> Result<ExitCode> {
+fn run_main() -> Result<ExitCode> {
     let cli = Cli::try_parse()?;
 
     logging::setup_logging(cli.tracing);
@@ -68,13 +68,7 @@ async fn run_main() -> Result<ExitCode> {
 }
 
 fn main() -> ExitCode {
-    let result = tokio::runtime::Builder::new_multi_thread()
-        .enable_all()
-        .build()
-        .expect("Failed building the runtime")
-        .block_on(run_main());
-
-    result.unwrap_or_else(|err| {
+    run_main().unwrap_or_else(|err| {
         print_error(&err);
         ExitCode::FAILURE
     })

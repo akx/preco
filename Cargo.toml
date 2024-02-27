@@ -25,7 +25,7 @@ rustc-hash = { version = "1.1.0" }
 serde = { version = "1.0.194" }
 serde_yaml = { version = "0.9.32" }
 shell-words = { version = "1.1.0" }
-tokio = { version = "1.35.1", features = ["rt-multi-thread"] }
+rayon = { version = "1.8.1" }
 tracing = { version = "0.1.40" }
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 tracing-tree = { version = "0.3.0" }
