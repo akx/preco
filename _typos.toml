@@ -1,2 +1,0 @@
-[files]
-extend-exclude = ["crates/identify/src/mappings.rs"]
